@@ -5,7 +5,10 @@ This repository explores **process resource monitoring and anomaly detection** u
 
 The goal of this experiment is to investigate how different anomaly detection approaches behave on **resource consumption time-series data**, and to evaluate their ability to detect injected anomalies in realistic workload scenarios.
 
+The dataset is intentionally small because it was generated from short prmon burner experiments for demonstration purposes.
+
 The project was implemented as a response to the warm-up exercise for the **CERN-HSF Google Summer of Code project: Automated Software Performance Monitoring for the ATLAS experiment.**
+
 
 ---
 
@@ -204,6 +207,41 @@ The figure below shows memory usage (PSS) with anomalies detected by each algori
 ![Anomaly Detection](plots/anomaly_detection.png)
 
 This visualization illustrates how different algorithms respond to changes in system behaviour.
+
+---
+
+## CPU Behaviour
+
+In addition to memory usage, CPU utilisation was analysed using the derived metric:
+
+```
+cpu_total = utime + stime
+```
+
+where:
+
+* **utime** represents the user CPU time consumed by the process
+* **stime** represents the system CPU time consumed by the process
+
+Monitoring CPU behaviour is important because anomalous workloads often manifest as sudden increases in CPU consumption or unusual execution patterns.
+
+The figure below shows the CPU usage over time together with anomalies detected by the three implemented methods.
+
+![CPU Anomaly Detection](plots/cpu_anomaly_detection.png)
+
+### Interpretation
+
+The anomaly markers correspond to observations where the detection algorithms identified unusual CPU behaviour relative to the baseline workload.
+
+Each detector highlights different characteristics of the signal:
+
+| Method           | Behaviour                                            |
+| ---------------- | ---------------------------------------------------- |
+| Z-Score          | Detects sudden spikes relative to a rolling baseline |
+| CUSUM            | Detects sustained shifts in CPU behaviour            |
+| Isolation Forest | Detects multivariate anomalies across metrics        |
+
+Combining statistical and machine learning detectors allows the monitoring pipeline to capture both **short-term spikes and longer-term behavioural changes** in system resource usage.
 
 ---
 
