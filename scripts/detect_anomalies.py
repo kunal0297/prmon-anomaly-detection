@@ -2,13 +2,10 @@ import numpy as np
 import pandas as pd
 from typing import List
 from sklearn.ensemble import IsolationForest
+import matplotlib.pyplot as plt
 
 
-def rolling_zscore(
-    data: np.ndarray,
-    window: int = 50,
-    threshold: float = 3.0
-) -> np.ndarray:
+def rolling_zscore(data: np.ndarray, window: int = 50, threshold: float = 3.0) -> np.ndarray:
 
     from numpy.lib.stride_tricks import sliding_window_view
 
@@ -56,11 +53,7 @@ def cusum_detection(series: np.ndarray) -> np.ndarray:
     return flags
 
 
-def time_aware_isolation_forest(
-    data: np.ndarray,
-    lags: int = 3,
-    contamination: float = 0.05
-) -> np.ndarray:
+def time_aware_isolation_forest(data: np.ndarray, lags: int = 3, contamination: float = 0.05) -> np.ndarray:
 
     from numpy.lib.stride_tricks import sliding_window_view
 
@@ -70,7 +63,7 @@ def time_aware_isolation_forest(
     windows = sliding_window_view(data, window_shape=window, axis=0)
 
     X = np.ascontiguousarray(
-        windows.reshape(n_rows - lags, window * n_features)
+        windows.transpose(0, 2, 1).reshape(n_rows - lags, -1)
     )
 
     model = IsolationForest(
@@ -88,22 +81,18 @@ def time_aware_isolation_forest(
     return anomalies
 
 
-def detect_anomalies(
-    df: pd.DataFrame,
-    features: List[str]
-) -> pd.DataFrame:
+def detect_anomalies(df: pd.DataFrame, features: List[str]) -> pd.DataFrame:
 
     data = df[features].to_numpy(dtype=np.float64)
 
     results = pd.DataFrame(index=df.index)
 
     results["zscore"] = rolling_zscore(data)
-
     results["cusum"] = cusum_detection(data[:, 0])
-
     results["iforest"] = time_aware_isolation_forest(data)
 
     return results
+
 
 def main():
 
@@ -131,45 +120,48 @@ def main():
     print("CUSUM anomalies:", results["cusum"].sum())
     print("IsolationForest anomalies:", results["iforest"].sum())
 
-    import matplotlib.pyplot as plt
+    # MEMORY PLOT
 
     plt.figure(figsize=(14,6))
+
     plt.plot(df["pss"], label="PSS Memory", linewidth=1)
 
-    plt.scatter(
-        df.index[df["zscore"]],
-        df["pss"][df["zscore"]],
-        color="red",
-        label="Z-score",
-        s=30
-    )
-
-    plt.scatter(
-        df.index[df["iforest"]],
-        df["pss"][df["iforest"]],
-        color="green",
-        label="IsolationForest",
-        s=30
-    )
-
-    plt.scatter(
-        df.index[df["cusum"]],
-        df["pss"][df["cusum"]],
-        color="purple",
-        label="CUSUM",
-        s=30
-    )
+    plt.scatter(df.index[df["zscore"]], df["pss"][df["zscore"]], color="red", s=30, label="Z-score")
+    plt.scatter(df.index[df["iforest"]], df["pss"][df["iforest"]], color="green", s=30, label="IsolationForest")
+    plt.scatter(df.index[df["cusum"]], df["pss"][df["cusum"]], color="purple", s=30, label="CUSUM")
 
     plt.legend()
-    plt.title("Anomaly Detection on prmon Metrics")
-    plt.xlabel("Time index")
+    plt.title("Anomaly Detection on prmon Memory Metrics")
+    plt.xlabel("Time Index")
     plt.ylabel("PSS Memory")
 
     plt.tight_layout()
 
     plt.savefig("../plots/anomaly_detection.png", dpi=300)
 
-    print("\nPlot saved to ../plots/anomaly_detection.png")
+    print("\nMemory plot saved to ../plots/anomaly_detection.png")
+
+
+    # CPU PLOT
+
+    plt.figure(figsize=(14,6))
+
+    plt.plot(df["cpu_total"], label="CPU Usage", linewidth=1)
+
+    plt.scatter(df.index[df["zscore"]], df["cpu_total"][df["zscore"]], color="red", s=30, label="Z-score")
+    plt.scatter(df.index[df["iforest"]], df["cpu_total"][df["iforest"]], color="green", s=30, label="IsolationForest")
+    plt.scatter(df.index[df["cusum"]], df["cpu_total"][df["cusum"]], color="purple", s=30, label="CUSUM")
+
+    plt.legend()
+    plt.title("CPU Usage with Detected Anomalies")
+    plt.xlabel("Time Index")
+    plt.ylabel("CPU Total")
+
+    plt.tight_layout()
+
+    plt.savefig("../plots/cpu_anomaly_detection.png", dpi=300)
+
+    print("CPU plot saved to ../plots/cpu_anomaly_detection.png")
 
 
 if __name__ == "__main__":
